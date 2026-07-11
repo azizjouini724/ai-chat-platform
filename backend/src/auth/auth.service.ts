@@ -76,6 +76,29 @@ export class AuthService {
       ...tokens,
     };
   }
+  async refreshTokens(userId: string, refreshToken: string) {
+    const user = await this.prisma.user.findUnique({
+      where: { id: userId },
+    });
+
+    if (!user || !user.refreshToken) {
+      throw new UnauthorizedException('Accès refusé');
+    }
+
+    const refreshTokenMatches = await bcrypt.compare(
+      refreshToken,
+      user.refreshToken,
+    );
+
+    if (!refreshTokenMatches) {
+      throw new UnauthorizedException('Accès refusé');
+    }
+
+    const tokens = await this.generateTokens(user.id, user.email);
+    await this.updateRefreshToken(user.id, tokens.refreshToken);
+
+    return tokens;
+  }
 
   private async generateTokens(userId: string, email: string) {
     const payload = { sub: userId, email };
@@ -99,5 +122,12 @@ export class AuthService {
       where: { id: userId },
       data: { refreshToken: hashedRefreshToken },
     });
+  }
+  async logout(userId: string) {
+    await this.prisma.user.update({
+      where: { id: userId },
+      data: { refreshToken: null },
+    });
+    return { message: 'Déconnexion réussie' };
   }
 }
