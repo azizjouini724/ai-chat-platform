@@ -7,11 +7,35 @@ datasource db {
 }
 
 model User {
-  id           String   @id @default(uuid())
-  email        String   @unique
-  username     String   @unique
-  password     String
-  refreshToken String?
-  createdAt    DateTime @default(now())
-  updatedAt    DateTime @updatedAt
+  id             String       @id @default(uuid())
+  email          String       @unique
+  username       String       @unique
+  password       String
+  refreshToken   String?
+  bio            String?
+  avatarUrl      String?
+  createdAt      DateTime     @default(now())
+  updatedAt      DateTime     @updatedAt
+
+  sentRequests     Friendship[] @relation("SentRequests")
+  receivedRequests Friendship[] @relation("ReceivedRequests")
+}
+enum FriendshipStatus {
+  PENDING
+  ACCEPTED
+  DECLINED
+}
+
+model Friendship {
+  id          String            @id @default(uuid())
+  senderId    String
+  receiverId  String
+  status      FriendshipStatus  @default(PENDING)
+  createdAt   DateTime          @default(now())
+  updatedAt   DateTime          @updatedAt
+
+  sender      User              @relation("SentRequests", fields: [senderId], references: [id])
+  receiver    User              @relation("ReceivedRequests", fields: [receiverId], references: [id])
+
+  @@unique([senderId, receiverId])
 }
