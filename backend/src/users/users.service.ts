@@ -96,4 +96,27 @@ export class UsersService {
       take: 20,
     });
   }
+  async deleteAccount(userId: string) {
+    const user = await this.prisma.user.findUnique({
+      where: { id: userId },
+      select: { avatarUrl: true },
+    });
+
+    if (!user) {
+      throw new NotFoundException('Utilisateur introuvable');
+    }
+
+    // Supprime l'avatar sur Cloudinary s'il existe
+    if (user.avatarUrl) {
+      const publicId = this.cloudinaryService.extractPublicId(user.avatarUrl);
+      if (publicId) {
+        await this.cloudinaryService.deleteImage(publicId);
+      }
+    }
+
+    // Supprime l'utilisateur (les Friendship liées sont supprimées automatiquement grâce au Cascade)
+    await this.prisma.user.delete({ where: { id: userId } });
+
+    return { message: 'Compte supprimé avec succès' };
+  }
 }
