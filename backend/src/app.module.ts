@@ -1,17 +1,33 @@
 import { Module } from '@nestjs/common';
+import { APP_GUARD } from '@nestjs/core';
+import { ThrottlerModule, ThrottlerGuard } from '@nestjs/throttler';
 import { AppController } from './app.controller';
-import { AppService } from './app.service';
 import { PrismaModule } from './prisma/prisma.module';
 import { AuthModule } from './auth/auth.module';
 import { UsersModule } from './users/users.module';
-import { CloudinaryModule } from './cloudinary/cloudinary.module';
 import { FriendsModule } from './friends/friends.module';
-
-
+import { MailModule } from './mail/mail.module';
 
 @Module({
-  imports: [PrismaModule, AuthModule, UsersModule, CloudinaryModule, FriendsModule],
+  imports: [
+    ThrottlerModule.forRoot([
+      {
+        ttl: 60000, // 60 secondes
+        limit: 20, // 20 requêtes max par minute, par IP (limite globale)
+      },
+    ]),
+    PrismaModule,
+    AuthModule,
+    UsersModule,
+    FriendsModule,
+    MailModule,
+  ],
   controllers: [AppController],
-  providers: [AppService],
+  providers: [
+    {
+      provide: APP_GUARD,
+      useClass: ThrottlerGuard,
+    },
+  ],
 })
 export class AppModule {}

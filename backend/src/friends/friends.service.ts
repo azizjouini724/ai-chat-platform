@@ -30,6 +30,12 @@ export class FriendsService {
       throw new NotFoundException('Utilisateur introuvable');
     }
 
+    const blocked = await this.isBlocked(senderId, receiverId);
+    if (blocked) {
+      throw new ForbiddenException('Action impossible entre ces deux utilisateurs');
+    }
+
+   
     const existing = await this.prisma.friendship.findFirst({
       where: {
         OR: [
@@ -40,14 +46,13 @@ export class FriendsService {
     });
 
     if (existing) {
-      if (existing.status === 'ACCEPTED') {
-        throw new BadRequestException('Vous êtes déjà amis');
-      }
-      if (existing.status === 'PENDING') {
-        throw new BadRequestException('Une demande est déjà en attente');
-      }
-      // Si DECLINED : on réutilise la ligne existante, on relance la demande
+      
       if (existing.status === 'DECLINED') {
+        if (existing.declineCount >= 3) {
+          throw new ForbiddenException(
+            'Cette personne a refusé plusieurs fois votre demande, vous ne pouvez plus lui en renvoyer',
+          );
+        }
         return this.prisma.friendship.update({
           where: { id: existing.id },
           data: { senderId, receiverId, status: 'PENDING' },
@@ -99,7 +104,10 @@ export class FriendsService {
 
     return this.prisma.friendship.update({
       where: { id: requestId },
-      data: { status: 'DECLINED' },
+      data: {
+        status: 'DECLINED',
+        declineCount: { increment: 1 },
+      },
     });
   }
 
@@ -153,5 +161,76 @@ export class FriendsService {
 
     await this.prisma.friendship.delete({ where: { id: friendshipId } });
     return { message: 'Suppression réussie' };
+  }
+  // Bloquer un utilisateur
+  async blockUser(blockerId: string, blockedId: string) {
+    if (blockerId === blockedId) {
+      throw new BadRequestException('Impossible de se bloquer soi-même');
+    }
+
+    const userToBlock = await this.prisma.user.findUnique({
+      where: { id: blockedId },
+    });
+    if (!userToBlock) {
+      throw new NotFoundException('Utilisateur introuvable');
+    }
+
+    const existing = await this.prisma.block.findUnique({
+      where: { blockerId_blockedId: { blockerId, blockedId } },
+    });
+    if (existing) {
+      throw new BadRequestException('Utilisateur déjà bloqué');
+    }
+
+    // Supprime toute amitié existante entre les deux (dans un sens ou l'autre)
+    await this.prisma.friendship.deleteMany({
+      where: {
+        OR: [
+          { senderId: blockerId, receiverId: blockedId },
+          { senderId: blockedId, receiverId: blockerId },
+        ],
+      },
+    });
+
+    return this.prisma.block.create({
+      data: { blockerId, blockedId },
+    });
+  }
+
+  // Débloquer un utilisateur
+  async unblockUser(blockerId: string, blockedId: string) {
+    const block = await this.prisma.block.findUnique({
+      where: { blockerId_blockedId: { blockerId, blockedId } },
+    });
+
+    if (!block) {
+      throw new NotFoundException('Ce blocage n\'existe pas');
+    }
+
+    await this.prisma.block.delete({ where: { id: block.id } });
+    return { message: 'Utilisateur débloqué' };
+  }
+
+  // Liste des utilisateurs bloqués
+  async getBlockedUsers(userId: string) {
+    const blocks = await this.prisma.block.findMany({
+      where: { blockerId: userId },
+      include: { blocked: { select: publicUserSelect } },
+    });
+
+    return blocks.map((b) => b.blocked);
+  }
+
+  // Vérifie si l'un des deux a bloqué l'autre (utile ailleurs, ex: avant d'envoyer une demande)
+  async isBlocked(userAId: string, userBId: string): Promise<boolean> {
+    const block = await this.prisma.block.findFirst({
+      where: {
+        OR: [
+          { blockerId: userAId, blockedId: userBId },
+          { blockerId: userBId, blockedId: userAId },
+        ],
+      },
+    });
+    return !!block;
   }
 }

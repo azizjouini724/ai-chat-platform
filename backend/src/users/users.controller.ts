@@ -3,6 +3,7 @@ import {
   Get,
   Patch,
   Post,
+  Delete,
   Body,
   Param,
   Query,
@@ -56,6 +57,10 @@ export class UsersController {
       throw new BadRequestException('Aucun fichier envoyé');
     }
     return this.usersService.updateAvatar(req.user.userId, file);
+  }
+  @Delete('me')
+  deleteAccount(@Request() req: any) {
+    return this.usersService.deleteAccount(req.user.userId);
   }
 
   @Get('search')
