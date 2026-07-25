@@ -25,6 +25,11 @@ model User {
   receivedRequests  Friendship[] @relation("ReceivedRequests")
   blockedUsers      Block[]      @relation("BlockerRelation")
   blockedByUsers    Block[]      @relation("BlockedRelation")
+
+  conversationMemberships ConversationMember[]
+  sentMessages            Message[]
+  groupJoinRequestsReceived GroupJoinRequest[] @relation("ProposedUser")
+  groupJoinRequestsMade     GroupJoinRequest[] @relation("RequestedBy")
 }
 enum FriendshipStatus {
   PENDING
@@ -56,4 +61,77 @@ model Block {
   blocked    User     @relation("BlockedRelation", fields: [blockedId], references: [id], onDelete: Cascade)
 
   @@unique([blockerId, blockedId])
+}
+enum ConversationType {
+  PRIVATE
+  GROUP
+}
+
+model Conversation {
+  id        String            @id @default(uuid())
+  type      ConversationType  @default(PRIVATE)
+  name      String?
+  avatarUrl String?
+  createdAt DateTime          @default(now())
+  updatedAt DateTime          @updatedAt
+
+  members   ConversationMember[]
+  messages  Message[]
+  joinRequests GroupJoinRequest[]
+}
+
+enum MemberRole {
+  ADMIN
+  MEMBER
+}
+
+model ConversationMember {
+  id             String       @id @default(uuid())
+  conversationId String
+  userId         String
+  role           MemberRole   @default(MEMBER)
+  joinedAt       DateTime     @default(now())
+  lastReadAt     DateTime     @default(now())
+  hiddenAt       DateTime?
+
+  conversation   Conversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+  user           User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([conversationId, userId])
+}
+
+model Message {
+  id             String       @id @default(uuid())
+  conversationId String
+  senderId       String
+  content        String?
+  imageUrl       String?
+  documentUrl    String?
+  isEdited       Boolean      @default(false)
+  isDeleted      Boolean      @default(false)
+  createdAt      DateTime     @default(now())
+  updatedAt      DateTime     @updatedAt
+
+  conversation   Conversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+  sender         User         @relation(fields: [senderId], references: [id], onDelete: Cascade)
+}
+enum JoinRequestStatus {
+  PENDING
+  ACCEPTED
+  DECLINED
+}
+
+model GroupJoinRequest {
+  id             String            @id @default(uuid())
+  conversationId String
+  userId         String            // la personne qu'on propose d'ajouter
+  requestedById  String            // le membre qui propose cet ajout
+  status         JoinRequestStatus @default(PENDING)
+  createdAt      DateTime          @default(now())
+
+  conversation   Conversation      @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+  user           User              @relation("ProposedUser", fields: [userId], references: [id], onDelete: Cascade)
+  requestedBy    User              @relation("RequestedBy", fields: [requestedById], references: [id], onDelete: Cascade)
+
+  @@unique([conversationId, userId])
 }
