@@ -7,6 +7,8 @@ import { AuthModule } from './auth/auth.module';
 import { UsersModule } from './users/users.module';
 import { FriendsModule } from './friends/friends.module';
 import { MailModule } from './mail/mail.module';
+import { ConversationsModule } from './conversations/conversations.module';
+import { MessagesModule } from './messages/messages.module';
 
 @Module({
   imports: [
@@ -21,6 +23,8 @@ import { MailModule } from './mail/mail.module';
     UsersModule,
     FriendsModule,
     MailModule,
+    ConversationsModule,
+    MessagesModule,
   ],
   controllers: [AppController],
   providers: [
