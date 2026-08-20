@@ -1,0 +1,117 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Test WebSocket</title>
+  <script src="https://cdn.socket.io/4.7.2/socket.io.min.js"></script>
+</head>
+<body>
+  <h1>Test WebSocket - AI Chat Platform</h1>
+  <div>
+    <label>Token JWT (accessToken) :</label><br>
+    <textarea id="token" rows="4" cols="80" placeholder="Colle ton accessToken ici"></textarea>
+  </div>
+  <br>
+  <button onclick="connect()">Se connecter</button>
+  <button onclick="disconnect()">Se déconnecter</button>
+  <br><br>
+  <label>Conversation ID (pour tester le typing) :</label><br>
+  <input type="text" id="convId" size="50" placeholder="Colle l'id de la conversation">
+  <br>
+  <button onclick="startTyping(document.getElementById('convId').value)">Commencer à écrire</button>
+  <button onclick="stopTyping(document.getElementById('convId').value)">Arrêter d'écrire</button>
+  <h3>Logs :</h3>
+  <pre id="logs" style="background: #eee; padding: 10px; height: 300px; overflow-y: scroll;"></pre>
+
+  <script>
+    let socket;
+
+    function log(message) {
+      const logs = document.getElementById('logs');
+      logs.textContent += new Date().toLocaleTimeString() + ' - ' + message + '\n';
+      logs.scrollTop = logs.scrollHeight;
+    }
+
+    function connect() {
+      const token = document.getElementById('token').value.trim();
+      if (!token) {
+        alert('Colle ton token JWT d\'abord');
+        return;
+      }
+
+      socket = io('http://localhost:3000', {
+        auth: { token },
+      });
+
+      socket.on('connect', () => {
+        log('✅ Connecté ! Socket ID: ' + socket.id);
+      });
+
+      socket.on('disconnect', () => {
+        log('❌ Déconnecté');
+      });
+
+      socket.on('connect_error', (err) => {
+        log('⚠️ Erreur de connexion: ' + err.message);
+      });
+
+      socket.on('userOnline', (data) => {
+        log('🟢 Ami en ligne : ' + data.userId);
+      });
+
+      socket.on('userOffline', (data) => {
+        log('⚪ Ami hors ligne : ' + data.userId);
+      });
+
+      socket.on('onlineFriendsList', (data) => {
+        log('📋 Amis en ligne actuellement : ' + JSON.stringify(data.onlineFriendIds));
+      });
+
+      socket.on('newMessage', (data) => {
+        log('💬 Nouveau message reçu : "' + (data.content || '[fichier]') + '" (conversation: ' + data.conversationId + ')');
+      });
+
+      socket.on('userTyping', (data) => {
+        log('✍️ Quelqu\'un écrit... (conversation: ' + data.conversationId + ', user: ' + data.userId + ')');
+      });
+
+      socket.on('userStoppedTyping', (data) => {
+        log('✋ A arrêté d\'écrire (conversation: ' + data.conversationId + ', user: ' + data.userId + ')');
+      });
+
+      socket.on('newFriendRequest', (data) => {
+        log('👤 Nouvelle demande d\'ami reçue de : ' + data.senderId);
+      });
+
+      socket.on('friendRequestSent', (data) => {
+        log('✅ Demande d\'ami envoyée à : ' + data.receiverId);
+      });
+
+      socket.on('friendRequestAccepted', (data) => {
+        log('🎉 Demande acceptée par : ' + data.acceptedBy);
+      });
+
+      socket.on('friendRequestDeclined', (data) => {
+        log('❌ Demande refusée par : ' + data.declinedBy);
+      });
+
+      socket.on('mentioned', (data) => {
+        log('🔔 Tu as été mentionné par ' + data.mentionedBy + ' dans la conversation ' + data.conversationId + ' : "' + data.content + '"');
+      });
+    }
+
+    function startTyping(conversationId) {
+      if (socket) socket.emit('startTyping', { conversationId });
+    }
+
+    function stopTyping(conversationId) {
+      if (socket) socket.emit('stopTyping', { conversationId });
+    }
+
+    function disconnect() {
+      if (socket) {
+        socket.disconnect();
+      }
+    }
+  </script>
+</body>
+</html>
