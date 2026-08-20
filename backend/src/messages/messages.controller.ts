@@ -117,8 +117,13 @@ export class MessagesController {
     return this.messagesService.editMessage(req.user.userId, messageId, body.content);
   }
 
-  @Delete('message/:messageId')
-  deleteMessage(@Request() req: any, @Param('messageId') messageId: string) {
-    return this.messagesService.deleteMessage(req.user.userId, messageId);
+  @Delete('message/:messageId/all')
+  deleteMessageForAll(@Request() req: any, @Param('messageId') messageId: string) {
+    return this.messagesService.deleteMessageForAll(req.user.userId, messageId);
+  }
+
+  @Delete('message/:messageId/me')
+  deleteMessageForMe(@Request() req: any, @Param('messageId') messageId: string) {
+    return this.messagesService.deleteMessageForMe(req.user.userId, messageId);
   }
 }

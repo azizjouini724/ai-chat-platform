@@ -3,8 +3,11 @@ import {
   BadRequestException,
   NotFoundException,
   ForbiddenException,
+  Inject,
+  forwardRef,
 } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
+import { WebsocketGateway } from '../websocket/websocket.gateway';
 
 const publicUserSelect = {
   id: true,
@@ -15,7 +18,11 @@ const publicUserSelect = {
 
 @Injectable()
 export class FriendsService {
-  constructor(private prisma: PrismaService) {}
+  constructor(
+    private prisma: PrismaService,
+    @Inject(forwardRef(() => WebsocketGateway))
+    private websocketGateway: WebsocketGateway,
+  ) {}
 
   // Envoyer une demande d'ami
   async sendRequest(senderId: string, receiverId: string) {
@@ -35,7 +42,6 @@ export class FriendsService {
       throw new ForbiddenException('Action impossible entre ces deux utilisateurs');
     }
 
-   
     const existing = await this.prisma.friendship.findFirst({
       where: {
         OR: [
@@ -45,25 +51,51 @@ export class FriendsService {
       },
     });
 
+    let request;
+
     if (existing) {
-      
+      if (existing.status === 'ACCEPTED') {
+        throw new BadRequestException('Vous êtes déjà amis');
+      }
+      if (existing.status === 'PENDING') {
+        throw new BadRequestException('Une demande est déjà en attente');
+      }
       if (existing.status === 'DECLINED') {
         if (existing.declineCount >= 3) {
           throw new ForbiddenException(
             'Cette personne a refusé plusieurs fois votre demande, vous ne pouvez plus lui en renvoyer',
           );
         }
-        return this.prisma.friendship.update({
+        request = await this.prisma.friendship.update({
           where: { id: existing.id },
           data: { senderId, receiverId, status: 'PENDING' },
         });
       }
+    } else {
+      request = await this.prisma.friendship.create({
+        data: { senderId, receiverId, status: 'PENDING' },
+      });
     }
 
-    return this.prisma.friendship.create({
-      data: { senderId, receiverId, status: 'PENDING' },
+   // Notifie le destinataire en temps réel s'il est connecté
+    this.websocketGateway.server.to(receiverId).emit('newFriendRequest', {
+      requestId: request.id,
+      senderId,
     });
+
+    // Notifie aussi l'expéditeur (utile s'il a plusieurs onglets/appareils ouverts)
+    this.websocketGateway.server.to(senderId).emit('friendRequestSent', {
+      requestId: request.id,
+      receiverId,
+    });
+
+    return request;
+  
+  
+
+    
   }
+
   // Accepter une demande reçue
   async acceptRequest(userId: string, requestId: string) {
     const request = await this.prisma.friendship.findUnique({
@@ -80,10 +112,18 @@ export class FriendsService {
       throw new BadRequestException('Cette demande a déjà été traitée');
     }
 
-    return this.prisma.friendship.update({
+    const updated = await this.prisma.friendship.update({
       where: { id: requestId },
       data: { status: 'ACCEPTED' },
     });
+
+    // Notifie l'expéditeur que sa demande a été acceptée
+    this.websocketGateway.server.to(request.senderId).emit('friendRequestAccepted', {
+      requestId,
+      acceptedBy: userId,
+    });
+
+    return updated;
   }
 
   // Refuser une demande reçue
@@ -102,13 +142,21 @@ export class FriendsService {
       throw new BadRequestException('Cette demande a déjà été traitée');
     }
 
-    return this.prisma.friendship.update({
+    const updated = await this.prisma.friendship.update({
       where: { id: requestId },
       data: {
         status: 'DECLINED',
         declineCount: { increment: 1 },
       },
     });
+
+    // Notifie l'expéditeur que sa demande a été refusée
+    this.websocketGateway.server.to(request.senderId).emit('friendRequestDeclined', {
+      requestId,
+      declinedBy: userId,
+    });
+
+    return updated;
   }
 
   // Liste des amis (demandes acceptées, dans les deux sens)
@@ -124,7 +172,6 @@ export class FriendsService {
       },
     });
 
-    // Retourne toujours "l'autre personne", peu importe qui a envoyé la demande
     return friendships.map((f) =>
       f.senderId === userId ? f.receiver : f.sender,
     );
@@ -137,7 +184,7 @@ export class FriendsService {
       include: { sender: { select: publicUserSelect } },
     });
   }
-
+  
   // Demandes envoyées en attente
   async getPendingSent(userId: string) {
     return this.prisma.friendship.findMany({
@@ -162,6 +209,7 @@ export class FriendsService {
     await this.prisma.friendship.delete({ where: { id: friendshipId } });
     return { message: 'Suppression réussie' };
   }
+
   // Bloquer un utilisateur
   async blockUser(blockerId: string, blockedId: string) {
     if (blockerId === blockedId) {
@@ -182,7 +230,6 @@ export class FriendsService {
       throw new BadRequestException('Utilisateur déjà bloqué');
     }
 
-    // Supprime toute amitié existante entre les deux (dans un sens ou l'autre)
     await this.prisma.friendship.deleteMany({
       where: {
         OR: [
@@ -221,7 +268,7 @@ export class FriendsService {
     return blocks.map((b) => b.blocked);
   }
 
-  // Vérifie si l'un des deux a bloqué l'autre (utile ailleurs, ex: avant d'envoyer une demande)
+  // Vérifie si l'un des deux a bloqué l'autre
   async isBlocked(userAId: string, userBId: string): Promise<boolean> {
     const block = await this.prisma.block.findFirst({
       where: {

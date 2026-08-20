@@ -5,6 +5,8 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
+import { Inject, forwardRef } from '@nestjs/common';
+import { WebsocketGateway } from '../websocket/websocket.gateway';
 
 const publicUserSelect = {
   id: true,
@@ -14,7 +16,11 @@ const publicUserSelect = {
 
 @Injectable()
 export class ConversationsService {
-  constructor(private prisma: PrismaService) {}
+  constructor(
+  private prisma: PrismaService,
+  @Inject(forwardRef(() => WebsocketGateway))
+  private websocketGateway: WebsocketGateway,
+) {}
 
   // Créer (ou récupérer) une conversation privée avec un autre utilisateur
   async getOrCreatePrivateConversation(userId: string, otherUserId: string) {
@@ -140,14 +146,19 @@ export class ConversationsService {
       where: { conversationId_userId: { conversationId, userId } },
     });
 
-    if (!member) {
-      throw new ForbiddenException('Vous ne faites pas partie de cette conversation');
-    }
+    if (!member) throw new ForbiddenException('Vous ne faites pas partie de cette conversation');
 
-    return this.prisma.conversationMember.update({
+    await this.prisma.conversationMember.update({
       where: { id: member.id },
       data: { lastReadAt: new Date() },
     });
+
+    // Notifie les autres membres que tu as lu la conversation
+    this.websocketGateway.server
+      .to(`conversation:${conversationId}`)
+      .emit('conversationRead', { conversationId, userId });
+
+    return { message: 'Conversation marquée comme lue' };
   }
   async isAdmin(conversationId: string, userId: string): Promise<boolean> {
     const member = await this.prisma.conversationMember.findUnique({
@@ -205,10 +216,21 @@ export class ConversationsService {
       throw new NotFoundException('Utilisateur introuvable');
     }
 
-    return this.prisma.conversationMember.create({
+    const newMember = await this.prisma.conversationMember.create({
       data: { conversationId, userId: newMemberId, role: 'MEMBER' },
       include: { user: { select: publicUserSelect } },
     });
+
+    this.websocketGateway.server
+      .to(`conversation:${conversationId}`)
+      .emit('memberJoined', { conversationId, user: newMember.user });
+
+    // Ajoute le nouveau membre à la room WebSocket s'il est connecté
+    this.websocketGateway.server
+      .in(newMemberId)
+      .socketsJoin(`conversation:${conversationId}`);
+
+    return newMember;
   }
   // Quitter un groupe
   async leaveGroup(conversationId: string, userId: string) {
@@ -241,6 +263,16 @@ export class ConversationsService {
     }
 
     await this.prisma.conversationMember.delete({ where: { id: member.id } });
+
+    this.websocketGateway.server
+      .to(`conversation:${conversationId}`)
+      .emit('memberLeft', { conversationId, userId });
+
+    // Retire l'utilisateur de la room WebSocket
+    this.websocketGateway.server
+      .in(userId)
+      .socketsLeave(`conversation:${conversationId}`);
+
     return { message: 'Vous avez quitté le groupe' };
   }
 
@@ -272,6 +304,15 @@ export class ConversationsService {
     }
 
     await this.prisma.conversationMember.delete({ where: { id: targetMember.id } });
+
+    this.websocketGateway.server
+      .to(`conversation:${conversationId}`)
+      .emit('memberLeft', { conversationId, userId: targetUserId });
+
+    this.websocketGateway.server
+      .in(targetUserId)
+      .socketsLeave(`conversation:${conversationId}`);
+
     return { message: 'Membre retiré du groupe' };
   }
 
@@ -370,10 +411,20 @@ export class ConversationsService {
       data: { status: 'ACCEPTED' },
     });
 
-    return this.prisma.conversationMember.create({
+    const newMember = await this.prisma.conversationMember.create({
       data: { conversationId, userId: request.userId, role: 'MEMBER' },
       include: { user: { select: publicUserSelect } },
     });
+
+    this.websocketGateway.server
+      .to(`conversation:${conversationId}`)
+      .emit('memberJoined', { conversationId, user: newMember.user });
+
+    this.websocketGateway.server
+      .in(request.userId)
+      .socketsJoin(`conversation:${conversationId}`);
+
+    return newMember;
   }
 
   // L'admin refuse une proposition
