@@ -32,10 +32,18 @@ export class AllExceptionsFilter implements ExceptionFilter {
         ? exception.getStatus()
         : HttpStatus.INTERNAL_SERVER_ERROR;
 
-    const message =
-      exception instanceof HttpException
-        ? exception.getResponse()
-        : 'Internal server error';
+    const rawMessage =
+  exception instanceof HttpException
+    ? exception.getResponse()
+    : 'Internal server error';
+
+// getResponse() renvoie parfois une string simple, parfois un objet
+// { statusCode, message, error } (cas des exceptions standard comme UnauthorizedException).
+// On normalise pour toujours renvoyer une chaîne simple au client.
+const message =
+  typeof rawMessage === 'string'
+    ? rawMessage
+    : ((rawMessage as any)?.message ?? 'Une erreur est survenue');
 
     // Ne logge en détail que les vraies erreurs serveur (500), pas les 400/401/403/404 normaux
     if (status === HttpStatus.INTERNAL_SERVER_ERROR) {
