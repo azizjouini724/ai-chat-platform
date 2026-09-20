@@ -143,4 +143,11 @@ export class WebsocketGateway implements OnGatewayConnection, OnGatewayDisconnec
       userId,
     });
   }
+  @SubscribeMessage('joinConversation')
+  handleJoinConversation(
+  @ConnectedSocket() client: Socket,
+  @MessageBody() data: { conversationId: string },
+  ) {
+  client.join(`conversation:${data.conversationId}`);
+  }
 }

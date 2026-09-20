@@ -9,6 +9,7 @@ import {
   UploadedFile,
   Request,
   BadRequestException,
+  Req,
 } from '@nestjs/common';
 import { Patch, Delete } from '@nestjs/common';
 import { Query } from '@nestjs/common';
@@ -17,6 +18,7 @@ import { MessagesService } from './messages.service';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { CreateMessageDto } from './dto/create-message.dto';
 import { CloudinaryService } from '../cloudinary/cloudinary.service';
+import { SetReactionDto } from './dto/set-reaction.dto';
 
 @UseGuards(JwtAuthGuard)
 @Controller('messages')
@@ -38,7 +40,16 @@ export class MessagesController {
       dto.content,
       dto.imageUrl,
       dto.documentUrl,
+      dto.replyToId,
     );
+  }
+  @Get(':conversationId/search')
+  searchMessages(
+    @Request() req: any,
+    @Param('conversationId') conversationId: string,
+    @Query('q') query: string,
+  ) {
+    return this.messagesService.searchMessages(conversationId, req.user.userId, query);
   }
 
  @Get(':conversationId')
@@ -126,4 +137,22 @@ export class MessagesController {
   deleteMessageForMe(@Request() req: any, @Param('messageId') messageId: string) {
     return this.messagesService.deleteMessageForMe(req.user.userId, messageId);
   }
+   
+
+// ...
+
+  @Post('message/:messageId/reaction')
+  setReaction(
+    @Param('messageId') messageId: string,
+    @Body() dto: SetReactionDto,
+    @Req() req: any,
+  ) {
+    return this.messagesService.setReaction(messageId, req.user.userId, dto.emoji);
+  }
+
+  @Delete('message/:messageId/reaction')
+  removeReaction(@Param('messageId') messageId: string, @Req() req: any) {
+    return this.messagesService.removeReaction(messageId, req.user.userId);
+  }
+  
 }

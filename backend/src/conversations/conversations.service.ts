@@ -12,6 +12,8 @@ const publicUserSelect = {
   id: true,
   username: true,
   avatarUrl: true,
+  bio: true,
+  lastSeenAt: true, // ajoute cette ligne si absente
 };
 
 @Injectable()
@@ -465,7 +467,7 @@ export class ConversationsService {
       },
     });
   }
-  async updateGroupInfo(conversationId: string, adminId: string, name?: string, avatarUrl?: string) {
+    async updateGroupInfo(conversationId: string, adminId: string, name?: string, avatarUrl?: string) {
     const conversation = await this.prisma.conversation.findUnique({
       where: { id: conversationId },
     });
@@ -481,13 +483,55 @@ export class ConversationsService {
       throw new ForbiddenException('Seul un admin peut modifier le groupe');
     }
 
-    return this.prisma.conversation.update({
+        const admin = await this.prisma.user.findUnique({
+      where: { id: adminId },
+      select: { id: true, username: true },
+    });
+
+    const updated = await this.prisma.conversation.update({
       where: { id: conversationId },
       data: {
         ...(name && { name }),
         ...(avatarUrl && { avatarUrl }),
       },
     });
+
+    // Met à jour le nom/l'avatar en temps réel pour tous les clients connectés
+    this.websocketGateway.server
+      .to(`conversation:${conversationId}`)
+      .emit('groupInfoUpdated', {
+        conversationId,
+        newName: name ? updated.name : undefined,
+        newAvatarUrl: avatarUrl ? updated.avatarUrl : undefined,
+      });
+
+    // Crée un vrai message "système" persistant, visible par tous (même hors ligne, même après reload)
+    const who = admin?.username ?? 'Un admin';
+    let systemText: string | null = null;
+    if (name && avatarUrl) {
+      systemText = `${who} a changé le nom en "${updated.name}" et la photo du groupe`;
+    } else if (name) {
+      systemText = `${who} a changé le nom du groupe : "${conversation.name}" → "${updated.name}"`;
+    } else if (avatarUrl) {
+      systemText = `${who} a changé la photo du groupe`;
+    }
+
+    if (systemText) {
+      const systemMessage = await this.prisma.message.create({
+        data: {
+          conversationId,
+          senderId: adminId,
+          type: 'SYSTEM',
+          content: systemText,
+        },
+        include: { sender: { select: publicUserSelect } },
+      });
+      this.websocketGateway.server
+        .to(`conversation:${conversationId}`)
+        .emit('newMessage', systemMessage);
+    }
+
+    return updated;
   }
   async hideConversation(conversationId: string, userId: string) {
     const member = await this.prisma.conversationMember.findUnique({

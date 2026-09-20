@@ -14,6 +14,7 @@ const publicUserSelect = {
   id: true,
   username: true,
   avatarUrl: true,
+  lastSeenAt: true, // ajoute cette ligne si absente
 };
 
 @Injectable()
@@ -25,13 +26,7 @@ export class MessagesService {
     private websocketGateway: WebsocketGateway,
   ) {}
 
-  async sendMessage(
-    senderId: string,
-    conversationId: string,
-    content?: string,
-    imageUrl?: string,
-    documentUrl?: string,
-  ) {
+ async sendMessage(senderId: string, conversationId: string, content?: string, imageUrl?: string, documentUrl?: string, replyToId?: string) {
     if (!content && !imageUrl && !documentUrl) {
       throw new BadRequestException('Le message ne peut pas être vide');
     }
@@ -63,9 +58,14 @@ export class MessagesService {
         content,
         imageUrl,
         documentUrl,
+        replyToId,
       },
       include: {
         sender: { select: publicUserSelect },
+        reactions: { include: { user: { select: publicUserSelect } } },
+        replyTo: {
+            include: { sender: { select: publicUserSelect } },
+  },
       },
     });
 
@@ -115,6 +115,28 @@ export class MessagesService {
     return message;
     
   }
+  async searchMessages(conversationId: string, userId: string, query: string) {
+    const member = await this.prisma.conversationMember.findUnique({
+      where: { conversationId_userId: { conversationId, userId } },
+    });
+    if (!member) throw new ForbiddenException('Vous ne faites pas partie de cette conversation');
+
+    if (!query || query.trim().length < 1) return [];
+
+    return this.prisma.message.findMany({
+      where: {
+        conversationId,
+        isDeleted: false,
+        content: { contains: query, mode: 'insensitive' },
+        hiddenBy: { none: { userId } },
+      },
+      include: {
+        sender: { select: publicUserSelect },
+      },
+      orderBy: { createdAt: 'desc' },
+      take: 30,
+    });
+  }
 async editMessage(userId: string, messageId: string, newContent: string) {
     const message = await this.prisma.message.findUnique({
       where: { id: messageId },
@@ -127,7 +149,11 @@ async editMessage(userId: string, messageId: string, newContent: string) {
     const updated = await this.prisma.message.update({
       where: { id: messageId },
       data: { content: newContent, isEdited: true },
-      include: { sender: { select: publicUserSelect } },
+     include: {
+        sender: { select: publicUserSelect },
+        reactions: { include: { user: { select: publicUserSelect } } },
+        replyTo: { include: { sender: { select: publicUserSelect } } },
+      },
     });
 
     // Diffuse l'édition en temps réel
@@ -188,6 +214,50 @@ async editMessage(userId: string, messageId: string, newContent: string) {
 
     return { message: 'Message masqué pour vous uniquement' };
   }
+    async setReaction(messageId: string, userId: string, emoji: string) {
+    const message = await this.prisma.message.findUnique({ where: { id: messageId } });
+    if (!message) throw new NotFoundException('Message introuvable');
+
+    const member = await this.prisma.conversationMember.findFirst({
+      where: { conversationId: message.conversationId, userId },
+    });
+    if (!member) throw new ForbiddenException('Tu n\'es pas membre de cette conversation');
+
+    await this.prisma.messageReaction.upsert({
+      where: { messageId_userId: { messageId, userId } },
+      update: { emoji },
+      create: { messageId, userId, emoji },
+    });
+
+    this.websocketGateway.server
+      .to(`conversation:${message.conversationId}`)
+      .emit('messageReactionUpdated', {
+        messageId,
+        conversationId: message.conversationId,
+        userId,
+        emoji,
+      });
+
+    return { messageId, userId, emoji };
+  }
+
+  async removeReaction(messageId: string, userId: string) {
+    const message = await this.prisma.message.findUnique({ where: { id: messageId } });
+    if (!message) throw new NotFoundException('Message introuvable');
+
+    await this.prisma.messageReaction.deleteMany({ where: { messageId, userId } });
+
+    this.websocketGateway.server
+      .to(`conversation:${message.conversationId}`)
+      .emit('messageReactionUpdated', {
+        messageId,
+        conversationId: message.conversationId,
+        userId,
+        emoji: null,
+      });
+
+    return { success: true };
+  }
   async getMessages(conversationId: string, userId: string, cursor?: string, limit = 30) {
     const member = await this.prisma.conversationMember.findUnique({
       where: { conversationId_userId: { conversationId, userId } },
@@ -201,12 +271,20 @@ async editMessage(userId: string, messageId: string, newContent: string) {
         createdAt: { gte: member.joinedAt },
         hiddenBy: { none: { userId } },
       },
-      include: { sender: { select: publicUserSelect } },
+      include: {
+      sender: { select: publicUserSelect },
+      reactions: { include: { user: { select: publicUserSelect } } },
+      replyTo: {
+        include: { sender: { select: publicUserSelect } },
+      },
+    },
       orderBy: { createdAt: 'desc' },
       take: limit,
       ...(cursor && { cursor: { id: cursor }, skip: 1 }),
     });
+    
 
     return messages.reverse();
+    
   }
 }

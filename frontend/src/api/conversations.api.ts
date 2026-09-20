@@ -18,6 +18,7 @@ export const conversationsApi = {
   leave: (id: string) => api.delete(`/conversations/${id}/leave`),
   removeMember: (id: string, userId: string) => api.delete(`/conversations/${id}/members/${userId}`),
   promoteMember: (id: string, userId: string) => api.post(`/conversations/${id}/promote/${userId}`),
-  update: (id: string, data: { name?: string }) => api.patch<Conversation>(`/conversations/${id}`, data),
+  update: (id: string, data: { name?: string; avatarUrl?: string }) =>
+  api.patch<Conversation>(`/conversations/${id}`, data),
   hide: (id: string) => api.delete(`/conversations/${id}/hide`),
 };
