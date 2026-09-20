@@ -1,5 +1,7 @@
 import axios, { type AxiosError, type InternalAxiosRequestConfig } from "axios";
 import { useAuthStore } from "@/store/auth.store.ts";
+import { reconnectSocketWithFreshToken } from "@/sockets/socket";
+import { toast } from "sonner";
 
 export const api = axios.create({
   baseURL: import.meta.env.VITE_API_URL,
@@ -61,11 +63,10 @@ api.interceptors.response.use(
       originalRequest.headers.Authorization = `Bearer ${data.accessToken}`;
       return api(originalRequest);
     } catch (refreshError) {
-      pendingQueue = [];
-      useAuthStore.getState().logout();
-      return Promise.reject(refreshError);
-    } finally {
-      isRefreshing = false;
-    }
+  pendingQueue = [];
+  useAuthStore.getState().logout();
+  toast.error("Ta session a expiré, reconnecte-toi.");
+  return Promise.reject(refreshError);
+}
   }
 );

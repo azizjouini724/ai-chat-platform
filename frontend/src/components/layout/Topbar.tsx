@@ -10,6 +10,8 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { useAuthStore } from "@/store/auth.store";
+import { Volume2, VolumeX } from "lucide-react";
+import { useNotificationPreferencesStore } from "@/store/notification-preferences.store";
 
 interface TopbarProps {
   title: string;
@@ -19,6 +21,8 @@ interface TopbarProps {
 export function Topbar({ title, onLogout }: TopbarProps) {
   const user = useAuthStore((s) => s.user);
   const hasUnread = true; // TODO: brancher sur le vrai state notifications plus tard
+  const soundEnabled = useNotificationPreferencesStore((s) => s.soundEnabled);
+  const toggleSound = useNotificationPreferencesStore((s) => s.toggleSound);
 
   return (
     <header className="flex h-16 items-center justify-between border-b border-border bg-background px-6">
@@ -29,6 +33,13 @@ export function Topbar({ title, onLogout }: TopbarProps) {
           <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
           <Input placeholder="Search the sky..." className="rounded-full bg-muted pl-9" />
         </div>
+        <button
+              onClick={toggleSound}
+              className="rounded-full p-2 text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+              title={soundEnabled ? "Desactiver le son" : "Activer le son"}
+            >
+              {soundEnabled ? <Volume2 className="h-5 w-5" /> : <VolumeX className="h-5 w-5" />}
+            </button>
 
         <button className="relative rounded-full p-2 text-muted-foreground transition-colors hover:bg-muted hover:text-foreground">
           <Bell className="h-5 w-5" />

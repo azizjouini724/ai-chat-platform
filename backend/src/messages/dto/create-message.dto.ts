@@ -1,9 +1,8 @@
-import { IsOptional, IsString, MaxLength } from 'class-validator';
+import { IsString, IsOptional } from 'class-validator';
 
 export class CreateMessageDto {
   @IsOptional()
   @IsString()
-  @MaxLength(5000)
   content?: string;
 
   @IsOptional()
@@ -13,4 +12,8 @@ export class CreateMessageDto {
   @IsOptional()
   @IsString()
   documentUrl?: string;
+
+  @IsOptional()
+  @IsString()
+  replyToId?: string;
 }

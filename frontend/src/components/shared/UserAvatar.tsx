@@ -18,11 +18,8 @@ const sizeMap = {
 
 export function UserAvatar({ src, name, isOnline, size = "md", className, onClick }: UserAvatarProps) {
   return (
-    <div
-      className={cn("relative shrink-0", onClick && "cursor-pointer", className)}
-      onClick={onClick}
-    >
-      <Avatar className={sizeMap[size]}>
+    <div className={cn("relative shrink-0", onClick && "cursor-pointer")} onClick={onClick}>
+      <Avatar className={cn(sizeMap[size], "transition-transform duration-200", onClick && "hover:scale-105", className)}>
         <AvatarImage src={src ?? undefined} alt={name} />
         <AvatarFallback className="bg-primary text-primary-foreground">
           {name?.slice(0, 2).toUpperCase() ?? "??"}

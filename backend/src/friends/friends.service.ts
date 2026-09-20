@@ -12,8 +12,9 @@ import { WebsocketGateway } from '../websocket/websocket.gateway';
 const publicUserSelect = {
   id: true,
   username: true,
-  bio: true,
   avatarUrl: true,
+  bio: true,
+  lastSeenAt: true, // ajoute cette ligne si absente
 };
 
 @Injectable()

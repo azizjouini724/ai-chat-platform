@@ -16,7 +16,7 @@ import { WebsocketModule } from './websocket/websocket.module';
     ThrottlerModule.forRoot([
       {
         ttl: 60000, // 60 secondes
-        limit: 20, // 20 requêtes max par minute, par IP (limite globale)
+        limit: 300, // 300 requêtes max par minute, par IP (limite globale)
       },
     ]),
     PrismaModule,

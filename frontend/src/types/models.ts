@@ -44,7 +44,7 @@ export interface Conversation {
   name?: string | null;
   avatarUrl?: string | null;
   members: ConversationMember[];
-  lastMessage?: Message | null;
+  messages?: Message[]; // contient uniquement le dernier message (take: 1 côté backend)
   unreadCount?: number;
   createdAt: string;
   updatedAt: string;
@@ -59,8 +59,21 @@ export interface Message {
   imageUrl?: string | null;
   documentUrl?: string | null;
   isEdited?: boolean;
+  isDeleted?: boolean;
+  type?: "TEXT" | "SYSTEM";
   createdAt: string;
   updatedAt: string;
+   reactions?: MessageReaction[];
+   replyToId?: string | null;
+  replyTo?: Message | null;
+   clientKey?: string;
+}
+export interface MessageReaction {
+  id?: string;
+  messageId: string;
+  userId: string;
+  emoji: string;
+  user?: User;
 }
 
 export interface GroupJoinRequest {

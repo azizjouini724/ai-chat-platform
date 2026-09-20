@@ -24,6 +24,8 @@ model User {
   isOnline   Boolean  @default(false)
   lastSeenAt DateTime @default(now())
 
+  reactions MessageReaction[]
+
   hiddenMessages MessageHide[]
 
   sentRequests      Friendship[] @relation("SentRequests")
@@ -104,7 +106,22 @@ model ConversationMember {
 
   @@unique([conversationId, userId])
 }
+enum MessageType {
+  TEXT
+  SYSTEM
+}
+model MessageReaction {
+  id        String   @id @default(uuid())
+  messageId String
+  userId    String
+  emoji     String
+  createdAt DateTime @default(now())
 
+  message Message @relation(fields: [messageId], references: [id], onDelete: Cascade)
+  user    User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([messageId, userId])
+}
 model Message {
   id             String       @id @default(uuid())
   conversationId String
@@ -118,6 +135,14 @@ model Message {
   updatedAt      DateTime     @updatedAt
 
   hiddenBy  MessageHide[]
+
+  replyToId String?
+  replyTo   Message?  @relation("MessageReplies", fields: [replyToId], references: [id], onDelete: SetNull)
+  replies   Message[] @relation("MessageReplies")
+
+  type MessageType @default(TEXT)
+
+  reactions MessageReaction[]
 
   conversation   Conversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
   sender         User         @relation(fields: [senderId], references: [id], onDelete: Cascade)
