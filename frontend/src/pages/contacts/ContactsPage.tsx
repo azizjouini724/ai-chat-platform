@@ -10,7 +10,7 @@ import { FriendRequestCard } from "./components/FriendRequestCard";
 import { friendsApi } from "@/api/friends.api";
 import { conversationsApi } from "@/api/conversations.api";
 import type { Friendship, User } from "@/types/models";
-
+import { connectSocket } from "@/sockets/socket";
 interface ContactsPageProps {
   onOpenChat: (conversationId: string) => void;
 }
@@ -43,6 +43,28 @@ export function ContactsPage({ onOpenChat }: ContactsPageProps) {
   useEffect(() => {
     loadAll();
   }, [loadAll]);
+
+
+// Écoute les événements temps réel liés aux demandes d'ami
+useEffect(() => {
+  const socket = connectSocket();
+
+  function handleFriendEvent() {
+    loadAll();
+  }
+
+  socket.on("newFriendRequest", handleFriendEvent);
+  socket.on("friendRequestSent", handleFriendEvent);
+  socket.on("friendRequestAccepted", handleFriendEvent);
+  socket.on("friendRequestDeclined", handleFriendEvent);
+
+  return () => {
+    socket.off("newFriendRequest", handleFriendEvent);
+    socket.off("friendRequestSent", handleFriendEvent);
+    socket.off("friendRequestAccepted", handleFriendEvent);
+    socket.off("friendRequestDeclined", handleFriendEvent);
+  };
+}, [loadAll]);
 
   async function handleChat(userId: string) {
     try {

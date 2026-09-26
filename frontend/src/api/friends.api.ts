@@ -13,4 +13,5 @@ export const friendsApi = {
   blockUser: (userId: string) => api.post(`/friends/block/${userId}`),
   unblockUser: (userId: string) => api.delete(`/friends/block/${userId}`),
   getBlocked: () => api.get<User[]>("/friends/blocked"),
+  getMutualFriends: (userId: string) => api.get<User[]>(`/friends/mutual/${userId}`),
 };

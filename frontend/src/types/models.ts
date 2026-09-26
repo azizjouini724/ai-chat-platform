@@ -9,6 +9,7 @@ export interface User {
   isOnline?: boolean;
   lastSeenAt?: string | null;
   createdAt: string;
+  status?: string | null;
 }
 
 export interface Friendship {
@@ -92,4 +93,32 @@ export interface AuthTokens {
 
 export interface AuthResponse extends AuthTokens {
   user?: User;
+  
+}
+export interface PostLike {
+  id: string;
+  postId: string;
+  userId: string;
+  user?: User;
+}
+
+export interface PostComment {
+  id: string;
+  postId: string;
+  authorId: string;
+  content: string;
+  author?: User;
+  createdAt: string;
+}
+
+export interface Post {
+  id: string;
+  authorId: string;
+  author?: User;
+  content?: string | null;
+  imageUrl?: string | null;
+  likes: PostLike[];
+  comments: PostComment[]; // ne contient que le dernier commentaire (take: 1 côté backend)
+  _count?: { comments: number };
+  createdAt: string;
 }

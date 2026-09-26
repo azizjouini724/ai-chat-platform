@@ -14,7 +14,8 @@ const publicUserSelect = {
   id: true,
   username: true,
   avatarUrl: true,
-  lastSeenAt: true, // ajoute cette ligne si absente
+  status: true,
+  lastSeenAt: true,
 };
 
 @Injectable()

@@ -9,6 +9,7 @@ const publicUserSelect = {
   email: true,
   username: true,
   bio: true,
+  status: true,
   avatarUrl: true,
   createdAt: true,
 };

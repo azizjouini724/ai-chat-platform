@@ -3,7 +3,7 @@ import type { User } from "@/types/models";
 
 export const usersApi = {
   getMe: () => api.get<User>("/users/me"),
-  updateMe: (data: { username?: string; bio?: string }) => api.patch<User>("/users/me", data),
+  updateMe: (data: { username?: string; bio?: string; status?: string }) => api.patch<User>("/users/me", data),
   uploadAvatar: (file: File) => {
     const formData = new FormData();
     formData.append("file", file);

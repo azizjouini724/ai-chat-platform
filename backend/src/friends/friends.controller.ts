@@ -64,4 +64,8 @@ export class FriendsController {
   getBlockedUsers(@Request() req: any) {
     return this.friendsService.getBlockedUsers(req.user.userId);
   }
+    @Get('mutual/:userId')
+  getMutualFriends(@Request() req: any, @Param('userId') userId: string) {
+    return this.friendsService.getMutualFriends(req.user.userId, userId);
+  }
 }

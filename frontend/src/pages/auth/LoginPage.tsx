@@ -29,6 +29,8 @@ interface LoginPageProps {
 export function LoginPage({ onNavigate }: LoginPageProps) {
   const [isLoading, setIsLoading] = useState(false);
   const setAuth = useAuthStore((s) => s.setAuth);
+ 
+  const setUser = useAuthStore((s) => s.setUser);
 
   const form = useForm<LoginFormValues>({
     resolver: zodResolver(loginSchema),
@@ -39,8 +41,15 @@ export function LoginPage({ onNavigate }: LoginPageProps) {
     setIsLoading(true);
     try {
       const { data } = await authApi.login(values);
+      // On met le token en store IMMÉDIATEMENT pour que l'intercepteur puisse l'utiliser
+      setAuth((data as any).user, data.accessToken, data.refreshToken);
+
+      // Puis on récupère le profil complet (avec avatarUrl, bio, status...) et on met à jour
       const meRes = await usersApi.getMe().catch(() => null);
-      setAuth(meRes?.data ?? (data as any).user, data.accessToken, data.refreshToken);
+      if (meRes?.data) {
+        setUser(meRes.data);
+      }
+
       toast.success("Bienvenue sur Chatini");
     } catch (error: any) {
       if (!error?.response) {
