@@ -10,6 +10,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import type { User } from "@/types/models";
+import { usePresenceStore } from "@/store/presence.store";
 
 interface FriendCardProps {
   user: User;
@@ -19,20 +20,20 @@ interface FriendCardProps {
 
 export function FriendCard({ user, onChat, onBlock }: FriendCardProps) {
   const [profileOpen, setProfileOpen] = useState(false);
-
+  const isOnline = usePresenceStore((s) => s.onlineUserIds.has(user.id));
   return (
     <>
       <div className="flex flex-col items-center rounded-2xl border border-border bg-card p-5 text-center shadow-sm transition-shadow hover:shadow-md">
-        <UserAvatar
+                <UserAvatar
           src={user.avatarUrl}
           name={user.username}
-          isOnline={user.isOnline}
+          isOnline={isOnline}
           size="lg"
           onClick={() => setProfileOpen(true)}
         />
         <p className="mt-3 font-heading font-semibold text-foreground">{user.username}</p>
         <p className="mt-0.5 line-clamp-1 text-xs text-muted-foreground">
-          {user.bio || (user.isOnline ? "En ligne" : "Hors ligne")}
+          {user.bio || (isOnline ? "En ligne" : "Hors ligne")}
         </p>
 
         <div className="mt-4 flex w-full items-center gap-2">

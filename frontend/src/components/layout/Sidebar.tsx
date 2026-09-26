@@ -1,4 +1,4 @@
-import { MessageSquare, Users, Sparkles, Settings, Lock, Cloud } from "lucide-react";
+import { MessageSquare, Users, Sparkles, Settings, Lock, Cloud, UserRound } from "lucide-react";
 import { cn } from "@/lib/utils";
 import logo from "@/assets/logo.png";
 
@@ -7,6 +7,8 @@ export type ActiveView = "messages" | "contacts" | "ai-tools" | "settings";
 interface SidebarProps {
   active: ActiveView;
   onChange: (view: ActiveView) => void;
+  onProfileClick: () => void;
+  isProfileActive: boolean;
 }
 
 const navItems: { id: ActiveView; label: string; icon: typeof MessageSquare; locked?: boolean }[] = [
@@ -16,30 +18,41 @@ const navItems: { id: ActiveView; label: string; icon: typeof MessageSquare; loc
   { id: "settings", label: "Settings", icon: Settings },
 ];
 
-export function Sidebar({ active, onChange }: SidebarProps) {
+export function Sidebar({ active, onChange, onProfileClick, isProfileActive }: SidebarProps) {
   return (
     <aside className="flex h-screen w-64 flex-col border-r border-sidebar-border bg-sidebar px-4 py-5">
-      {/* Logo */}
       <div className="mb-8 flex items-center gap-2 px-2">
-        <img src={logo} alt="Chatini" className="h-20 w-20" />
+        <img src={logo} alt="Chatini" className="h-11 w-11" />
         <span className="font-heading text-xl font-bold text-sidebar-foreground">Chatini</span>
       </div>
 
-      {/* Navigation */}
       <nav className="flex flex-1 flex-col gap-1">
+        <button
+          onClick={onProfileClick}
+          className={cn(
+            "flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium transition-all duration-200",
+            isProfileActive
+              ? "bg-sidebar-primary text-sidebar-primary-foreground shadow-sm scale-[1.02]"
+              : "text-sidebar-foreground/70 hover:bg-sidebar-accent hover:text-sidebar-accent-foreground hover:pl-4"
+          )}
+        >
+          <UserRound className="h-4 w-4 shrink-0" />
+          <span className="flex-1 text-left">Profil</span>
+        </button>
+
         {navItems.map((item) => {
-          const isActive = active === item.id;
+          const isActive = !isProfileActive && active === item.id;
           return (
             <button
               key={item.id}
               disabled={item.locked}
               onClick={() => !item.locked && onChange(item.id)}
-               className={cn(
+              className={cn(
                 "flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium transition-all duration-200",
                 isActive
                   ? "bg-sidebar-primary text-sidebar-primary-foreground shadow-sm scale-[1.02]"
                   : "text-sidebar-foreground/70 hover:bg-sidebar-accent hover:text-sidebar-accent-foreground hover:pl-4",
-                item.locked && "cursor-not-allowed opacity-50 hover:bg-transparent"
+                item.locked && "cursor-not-allowed opacity-50 hover:bg-transparent hover:pl-3"
               )}
             >
               <item.icon className="h-4 w-4 shrink-0" />
@@ -50,7 +63,6 @@ export function Sidebar({ active, onChange }: SidebarProps) {
         })}
       </nav>
 
-      {/* Cloud Sync status */}
       <div className="mt-auto flex items-center gap-2 rounded-xl bg-accent px-3 py-2.5 text-xs font-medium text-accent-foreground">
         <Cloud className="h-4 w-4 shrink-0 text-primary" />
         <div>

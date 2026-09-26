@@ -12,6 +12,7 @@ import {
 import { useAuthStore } from "@/store/auth.store";
 import { Volume2, VolumeX } from "lucide-react";
 import { useNotificationPreferencesStore } from "@/store/notification-preferences.store";
+import { useProfileNavigationStore } from "@/store/profile-navigation.store";
 
 interface TopbarProps {
   title: string;
@@ -23,6 +24,7 @@ export function Topbar({ title, onLogout }: TopbarProps) {
   const hasUnread = true; // TODO: brancher sur le vrai state notifications plus tard
   const soundEnabled = useNotificationPreferencesStore((s) => s.soundEnabled);
   const toggleSound = useNotificationPreferencesStore((s) => s.toggleSound);
+  const openProfile = useProfileNavigationStore((s) => s.openProfile);
 
   return (
     <header className="flex h-16 items-center justify-between border-b border-border bg-background px-6">
@@ -60,13 +62,17 @@ export function Topbar({ title, onLogout }: TopbarProps) {
             </button>
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end" className="w-48">
-            <div className="px-2 py-1.5 text-sm">
-              <p className="font-medium">{user?.username ?? "Invité"}</p>
-              <p className="text-xs text-muted-foreground">{user?.email}</p>
-            </div>
-            <DropdownMenuSeparator />
-            <DropdownMenuItem onClick={onLogout}>Se déconnecter</DropdownMenuItem>
-          </DropdownMenuContent>
+                  <div className="px-2 py-1.5 text-sm">
+                    <p className="font-medium">{user?.username ?? "Invité"}</p>
+                    <p className="text-xs text-muted-foreground">{user?.email}</p>
+                  </div>
+                  <DropdownMenuSeparator />
+                  <DropdownMenuItem onClick={() => user && openProfile(user.id)}>Voir mon profil</DropdownMenuItem>
+                  <DropdownMenuSeparator />
+                  <DropdownMenuItem onClick={onLogout} className="text-destructive">
+                    Se déconnecter
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
         </DropdownMenu>
       </div>
     </header>

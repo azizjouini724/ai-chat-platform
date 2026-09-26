@@ -37,6 +37,11 @@ model User {
   sentMessages            Message[]
   groupJoinRequestsReceived GroupJoinRequest[] @relation("ProposedUser")
   groupJoinRequestsMade     GroupJoinRequest[] @relation("RequestedBy")
+
+  status       String?
+  posts        Post[]
+  postLikes    PostLike[]
+  postComments PostComment[]
 }
 enum FriendshipStatus {
   PENDING
@@ -177,4 +182,39 @@ model MessageHide {
   user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@unique([messageId, userId])
+}
+model Post {
+  id        String   @id @default(uuid())
+  authorId  String
+  content   String?
+  imageUrl  String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  author   User          @relation(fields: [authorId], references: [id], onDelete: Cascade)
+  likes    PostLike[]
+  comments PostComment[]
+}
+
+model PostLike {
+  id        String   @id @default(uuid())
+  postId    String
+  userId    String
+  createdAt DateTime @default(now())
+
+  post Post @relation(fields: [postId], references: [id], onDelete: Cascade)
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([postId, userId])
+}
+
+model PostComment {
+  id        String   @id @default(uuid())
+  postId    String
+  authorId  String
+  content   String
+  createdAt DateTime @default(now())
+
+  post   Post @relation(fields: [postId], references: [id], onDelete: Cascade)
+  author User @relation(fields: [authorId], references: [id], onDelete: Cascade)
 }

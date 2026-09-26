@@ -52,7 +52,7 @@ export class FriendsService {
       },
     });
 
-    let request;
+        let request;
 
     if (existing) {
       if (existing.status === 'ACCEPTED') {
@@ -62,17 +62,44 @@ export class FriendsService {
         throw new BadRequestException('Une demande est déjà en attente');
       }
       if (existing.status === 'DECLINED') {
-        if (existing.declineCount >= 3) {
-          throw new ForbiddenException(
-            'Cette personne a refusé plusieurs fois votre demande, vous ne pouvez plus lui en renvoyer',
-          );
+        // On regarde qui essaie d'envoyer maintenant, par rapport à qui avait été refusé avant
+        const isSamePersonAsBefore = existing.senderId === senderId;
+
+        if (isSamePersonAsBefore) {
+          // C'est la personne qui s'est fait refuser qui retente : on applique la limite
+          if (existing.declineCount >= 3) {
+            const COOLDOWN_MS = 3 * 24 * 60 * 60 * 1000; // 3 jours
+            const elapsed = Date.now() - existing.updatedAt.getTime();
+
+            if (elapsed < COOLDOWN_MS) {
+              const remainingDays = Math.ceil((COOLDOWN_MS - elapsed) / (24 * 60 * 60 * 1000));
+              throw new ForbiddenException(
+                `Cette personne a refusé plusieurs fois votre demande. Réessayez dans ${remainingDays} jour(s).`,
+              );
+            }
+
+            // Délai passé : on repart de zéro
+            request = await this.prisma.friendship.update({
+              where: { id: existing.id },
+              data: { senderId, receiverId, status: 'PENDING', declineCount: 0 },
+            });
+          } else {
+            request = await this.prisma.friendship.update({
+              where: { id: existing.id },
+              data: { senderId, receiverId, status: 'PENDING' },
+            });
+          }
+        } else {
+          // C'est la personne qui avait refusé qui envoie maintenant sa propre demande :
+          // jamais bloquée, et on repart avec un compteur propre pour cette nouvelle direction
+          request = await this.prisma.friendship.update({
+            where: { id: existing.id },
+            data: { senderId, receiverId, status: 'PENDING', declineCount: 0 },
+          });
         }
-        request = await this.prisma.friendship.update({
-          where: { id: existing.id },
-          data: { senderId, receiverId, status: 'PENDING' },
-        });
       }
     } else {
+      // Aucune relation n'existe encore entre ces deux personnes : nouvelle demande
       request = await this.prisma.friendship.create({
         data: { senderId, receiverId, status: 'PENDING' },
       });
@@ -176,6 +203,16 @@ export class FriendsService {
     return friendships.map((f) =>
       f.senderId === userId ? f.receiver : f.sender,
     );
+  }
+    // Amis en commun entre l'utilisateur connecté et un autre utilisateur
+  async getMutualFriends(userId: string, otherUserId: string) {
+    const [myFriends, theirFriends] = await Promise.all([
+      this.getFriends(userId),
+      this.getFriends(otherUserId),
+    ]);
+
+    const theirFriendIds = new Set(theirFriends.map((u) => u.id));
+    return myFriends.filter((u) => theirFriendIds.has(u.id));
   }
 
   // Demandes reçues en attente

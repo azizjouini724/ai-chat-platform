@@ -10,6 +10,7 @@ import { MailModule } from './mail/mail.module';
 import { ConversationsModule } from './conversations/conversations.module';
 import { MessagesModule } from './messages/messages.module';
 import { WebsocketModule } from './websocket/websocket.module';
+import { PostsModule } from './posts/posts.module';
 
 @Module({
   imports: [
@@ -27,6 +28,7 @@ import { WebsocketModule } from './websocket/websocket.module';
     ConversationsModule,
     MessagesModule,
     WebsocketModule,
+    PostsModule,
   ],
   controllers: [AppController],
   providers: [

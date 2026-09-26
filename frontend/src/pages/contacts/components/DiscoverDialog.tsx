@@ -15,7 +15,7 @@ import { usersApi } from "@/api/users.api";
 import { friendsApi } from "@/api/friends.api";
 import { useAuthStore } from "@/store/auth.store";
 import type { User } from "@/types/models";
-
+import { UserProfileDialog } from "@/components/shared/UserProfileDialog";
 interface DiscoverDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
@@ -28,6 +28,7 @@ export function DiscoverDialog({ open, onOpenChange, connectedIds }: DiscoverDia
   const [results, setResults] = useState<User[]>([]);
   const [isSearching, setIsSearching] = useState(false);
   const [justSentIds, setJustSentIds] = useState<Set<string>>(new Set());
+  const [profileUser, setProfileUser] = useState<User | null>(null);
 
   async function handleSearch(value: string) {
     setQuery(value);
@@ -90,11 +91,17 @@ export function DiscoverDialog({ open, onOpenChange, connectedIds }: DiscoverDia
               const isConnected = connectedIds.has(user.id) || justSentIds.has(user.id);
               return (
                 <div key={user.id} className="flex items-center gap-3 rounded-xl p-2 hover:bg-muted/50">
-                  <UserAvatar src={user.avatarUrl} name={user.username} size="sm" />
-                  <div className="flex-1 min-w-0">
-                    <p className="truncate text-sm font-medium text-foreground">{user.username}</p>
-                    <p className="truncate text-xs text-muted-foreground">{user.email}</p>
-                  </div>
+                  <button
+                    type="button"
+                    className="flex flex-1 min-w-0 items-center gap-3 text-left"
+                    onClick={() => setProfileUser(user)}
+                  >
+                    <UserAvatar src={user.avatarUrl} name={user.username} size="sm" />
+                    <div className="flex-1 min-w-0">
+                      <p className="truncate text-sm font-medium text-foreground">{user.username}</p>
+                      <p className="truncate text-xs text-muted-foreground">{user.email}</p>
+                    </div>
+                  </button>
                   <Button
                     size="sm"
                     variant={isConnected ? "secondary" : "default"}
@@ -109,7 +116,17 @@ export function DiscoverDialog({ open, onOpenChange, connectedIds }: DiscoverDia
             })}
           </div>
         </ScrollArea>
+        
+      
       </DialogContent>
+
+      <UserProfileDialog
+        user={profileUser}
+        open={profileUser !== null}
+        onOpenChange={(open) => !open && setProfileUser(null)}
+      />
     </Dialog>
   );
 }
+      
+   
