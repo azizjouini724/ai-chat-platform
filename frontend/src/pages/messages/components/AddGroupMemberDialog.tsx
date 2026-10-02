@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
-import { Loader2, UserPlus, Check } from "lucide-react";
+import { Loader2, UserPlus, Check, Clock } from "lucide-react";
 import {
   Dialog,
   DialogContent,
@@ -21,6 +21,7 @@ interface AddGroupMemberDialogProps {
   onOpenChange: (open: boolean) => void;
   conversationId: string;
   existingMemberIds: string[];
+  isAdmin: boolean;
 }
 
 export function AddGroupMemberDialog({
@@ -28,15 +29,21 @@ export function AddGroupMemberDialog({
   onOpenChange,
   conversationId,
   existingMemberIds,
+  isAdmin,
 }: AddGroupMemberDialogProps) {
   const [friends, setFriends] = useState<User[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [addingIds, setAddingIds] = useState<Set<string>>(new Set());
   const [addedIds, setAddedIds] = useState<Set<string>>(new Set());
+  const [proposedIds, setProposedIds] = useState<Set<string>>(new Set());
   const addMember = useConversationsStore((s) => s.addMember);
 
-  useEffect(() => {
+    useEffect(() => {
     if (!open) return;
+    // Repart à zéro à chaque ouverture : une proposition refusée entre-temps
+    // ne doit pas rester bloquée indéfiniment sur "en attente"
+    setAddedIds(new Set());
+    setProposedIds(new Set());
     setIsLoading(true);
     friendsApi
       .getFriends()
@@ -48,19 +55,30 @@ export function AddGroupMemberDialog({
   async function handleAdd(user: User) {
     setAddingIds((prev) => new Set(prev).add(user.id));
     try {
-      await conversationsApi.addMember(conversationId, user.id);
-      addMember(conversationId, {
-        id: `${conversationId}-${user.id}`,
-        conversationId,
-        userId: user.id,
-        role: "MEMBER",
-        user,
-        joinedAt: new Date().toISOString(),
-      });
-      setAddedIds((prev) => new Set(prev).add(user.id));
-      toast.success(`${user.username} ajouté au groupe`);
+      if (isAdmin) {
+        await conversationsApi.addMember(conversationId, user.id);
+        addMember(conversationId, {
+          id: `${conversationId}-${user.id}`,
+          conversationId,
+          userId: user.id,
+          role: "MEMBER",
+          user,
+          joinedAt: new Date().toISOString(),
+        });
+        setAddedIds((prev) => new Set(prev).add(user.id));
+        toast.success(`${user.username} ajouté au groupe`);
+      } else {
+        await conversationsApi.proposeMember(conversationId, user.id);
+        setProposedIds((prev) => new Set(prev).add(user.id));
+        toast.success(`Proposition envoyée pour ${user.username}`);
+      }
     } catch (error) {
-      toast.error(extractErrorMessage(error, "Impossible d'ajouter ce membre"));
+      toast.error(
+        extractErrorMessage(
+          error,
+          isAdmin ? "Impossible d'ajouter ce membre" : "Impossible de proposer ce membre"
+        )
+      );
     } finally {
       setAddingIds((prev) => {
         const next = new Set(prev);
@@ -78,9 +96,15 @@ export function AddGroupMemberDialog({
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <UserPlus className="h-4 w-4" />
-            Ajouter des membres
+            {isAdmin ? "Ajouter des membres" : "Proposer des membres"}
           </DialogTitle>
         </DialogHeader>
+
+        {!isAdmin && (
+          <p className="-mt-2 text-xs text-muted-foreground">
+            Un admin devra valider ta proposition avant que la personne rejoigne le groupe.
+          </p>
+        )}
 
         <ScrollArea className="h-72">
           {isLoading ? (
@@ -97,6 +121,8 @@ export function AddGroupMemberDialog({
               {availableFriends.map((user) => {
                 const isAdding = addingIds.has(user.id);
                 const isAdded = addedIds.has(user.id);
+                const isProposed = proposedIds.has(user.id);
+                const isDisabled = isAdding || isAdded || isProposed;
                 return (
                   <div key={user.id} className="flex items-center gap-3 rounded-xl p-2 hover:bg-muted/50">
                     <UserAvatar src={user.avatarUrl} name={user.username} size="sm" />
@@ -105,15 +131,17 @@ export function AddGroupMemberDialog({
                     </span>
                     <Button
                       size="sm"
-                      variant={isAdded ? "secondary" : "default"}
+                      variant={isDisabled ? "secondary" : "default"}
                       className="rounded-full"
-                      disabled={isAdding || isAdded}
+                      disabled={isDisabled}
                       onClick={() => handleAdd(user)}
                     >
                       {isAdding ? (
                         <Loader2 className="h-3.5 w-3.5 animate-spin" />
                       ) : isAdded ? (
                         <Check className="h-3.5 w-3.5" />
+                      ) : isProposed ? (
+                        <Clock className="h-3.5 w-3.5" />
                       ) : (
                         <UserPlus className="h-3.5 w-3.5" />
                       )}

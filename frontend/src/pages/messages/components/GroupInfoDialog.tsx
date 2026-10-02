@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { toast } from "sonner";
 import { Loader2, LogOut, ShieldCheck, UserMinus, UserPlus, Pencil, Check } from "lucide-react";
 import {
@@ -24,13 +24,16 @@ import { useAuthStore } from "@/store/auth.store";
 import { useConversationsStore } from "@/store/conversations.store";
 import { usePresenceStore } from "@/store/presence.store";
 import { AddGroupMemberDialog } from "./AddGroupMemberDialog";
-import type { Conversation } from "@/types/models";
+import type { Conversation, GroupJoinRequest } from "@/types/models";
+import { UserCheck, X } from "lucide-react";
+ 
 
 interface GroupInfoDialogProps {
   conversation: Conversation;
   open: boolean;
   onOpenChange: (open: boolean) => void;
   onLeft: () => void;
+  
 }
 
 export function GroupInfoDialog({ conversation, open, onOpenChange, onLeft }: GroupInfoDialogProps) {
@@ -49,6 +52,16 @@ export function GroupInfoDialog({ conversation, open, onOpenChange, onLeft }: Gr
 
   const myMembership = conversation.members.find((m) => m.userId === currentUserId);
   const isAdmin = myMembership?.role === "ADMIN";
+  const [joinRequests, setJoinRequests] = useState<GroupJoinRequest[]>([]);
+  const [processingRequestId, setProcessingRequestId] = useState<string | null>(null);
+   useEffect(() => {
+    if (!open || !isAdmin) return;
+    conversationsApi
+      .getJoinRequests(conversation.id)
+      .then((res) => setJoinRequests(res.data))
+      .catch(() => {});
+  }, [open, isAdmin, conversation.id]);
+
 
   async function handleSaveName() {
     const trimmed = nameValue.trim();
@@ -67,7 +80,31 @@ export function GroupInfoDialog({ conversation, open, onOpenChange, onLeft }: Gr
       setIsSavingName(false);
     }
   }
+  async function handleAcceptJoinRequest(requestId: string) {
+    setProcessingRequestId(requestId);
+    try {
+      await conversationsApi.acceptJoinRequest(conversation.id, requestId);
+      setJoinRequests((prev) => prev.filter((r) => r.id !== requestId));
+      toast.success("Membre ajouté au groupe");
+    } catch (error) {
+      toast.error(extractErrorMessage(error, "Impossible d'accepter cette demande"));
+    } finally {
+      setProcessingRequestId(null);
+    }
+  }
 
+  async function handleDeclineJoinRequest(requestId: string) {
+    setProcessingRequestId(requestId);
+    try {
+      await conversationsApi.declineJoinRequest(conversation.id, requestId);
+      setJoinRequests((prev) => prev.filter((r) => r.id !== requestId));
+      toast.success("Demande refusée");
+    } catch (error) {
+      toast.error(extractErrorMessage(error, "Impossible de refuser cette demande"));
+    } finally {
+      setProcessingRequestId(null);
+    }
+  }
   async function handleAvatarChange(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
     if (!file) return;
@@ -179,13 +216,50 @@ export function GroupInfoDialog({ conversation, open, onOpenChange, onLeft }: Gr
 
           <div className="flex items-center justify-between">
             <p className="text-sm font-semibold text-foreground">Membres</p>
-            {isAdmin && (
-              <Button size="sm" variant="secondary" className="rounded-full" onClick={() => setIsAddMemberOpen(true)}>
-                <UserPlus className="mr-1.5 h-3.5 w-3.5" />
-                Ajouter
-              </Button>
-            )}
+            <Button size="sm" variant="secondary" className="rounded-full" onClick={() => setIsAddMemberOpen(true)}>
+              <UserPlus className="mr-1.5 h-3.5 w-3.5" />
+              Ajouter
+            </Button>
           </div>
+                    {isAdmin && joinRequests.length > 0 && (
+            <div className="rounded-xl border border-border bg-muted/40 p-3">
+              <p className="mb-2 text-xs font-semibold text-muted-foreground">
+                Demandes en attente ({joinRequests.length})
+              </p>
+              <div className="space-y-2">
+                {joinRequests.map((req) => (
+                  <div key={req.id} className="flex items-center gap-2 rounded-lg bg-card p-2">
+                    <UserAvatar src={req.user?.avatarUrl} name={req.user?.username} size="sm" />
+                    <div className="min-w-0 flex-1">
+                      <p className="truncate text-sm font-medium text-foreground">
+                        {req.user?.username}
+                      </p>
+                      <p className="truncate text-[11px] text-muted-foreground">
+                        proposé par {req.requestedBy?.username}
+                      </p>
+                    </div>
+                    <Button
+                      size="icon"
+                      className="h-7 w-7 shrink-0 rounded-full"
+                      disabled={processingRequestId === req.id}
+                      onClick={() => handleAcceptJoinRequest(req.id)}
+                    >
+                      <UserCheck className="h-3.5 w-3.5" />
+                    </Button>
+                    <Button
+                      size="icon"
+                      variant="outline"
+                      className="h-7 w-7 shrink-0 rounded-full"
+                      disabled={processingRequestId === req.id}
+                      onClick={() => handleDeclineJoinRequest(req.id)}
+                    >
+                      <X className="h-3.5 w-3.5" />
+                    </Button>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
 
           <ScrollArea className="h-56">
             <div className="space-y-1">
@@ -259,6 +333,7 @@ export function GroupInfoDialog({ conversation, open, onOpenChange, onLeft }: Gr
         onOpenChange={setIsAddMemberOpen}
         conversationId={conversation.id}
         existingMemberIds={memberIds}
+        isAdmin={isAdmin}
       />
     </>
   );

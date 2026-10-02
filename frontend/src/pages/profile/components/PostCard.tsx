@@ -96,11 +96,11 @@ export function PostCard({ post, onDeleted, onLikeToggled, onCommentAdded }: Pos
 
       {post.content && <p className="mt-3 text-sm text-foreground">{post.content}</p>}
 
-      {post.imageUrl && (
+        {post.imageUrl && (
         <img
           src={post.imageUrl}
           alt="Publication"
-          className="mt-3 max-h-96 w-full rounded-xl object-cover"
+          className="mx-auto mt-3 max-h-96 rounded-xl object-contain"
         />
       )}
 

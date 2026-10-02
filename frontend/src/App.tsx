@@ -10,6 +10,8 @@ import { useSocketConnection } from "@/hooks/useSocketConnection";
 import { useProfileNavigationStore } from "@/store/profile-navigation.store";
 import type { ActiveView } from "@/components/layout/Sidebar";
 import { unlockAudio } from "@/lib/notification-sound";
+import { SettingsPage } from "@/pages/settings/SettingsPage";
+import { NotesHistoryPage } from "@/pages/profile/NotesHistoryPage";
 
 function App() {
   const isAuthenticated = useAuthStore((s) => s.isAuthenticated);
@@ -19,6 +21,7 @@ function App() {
   const openProfileUserId = useProfileNavigationStore((s) => s.openProfileUserId);
   const closeProfile = useProfileNavigationStore((s) => s.closeProfile);
   const openProfile = useProfileNavigationStore((s) => s.openProfile);
+  const [isNotesHistoryOpen, setIsNotesHistoryOpen] = useState(false);
 
   useSocketConnection(activeView === "messages" ? selectedConversationId : null);
 
@@ -53,9 +56,13 @@ function App() {
           onProfileClick={() => currentUserId && openProfile(currentUserId)}
           isProfileActive={!!openProfileUserId && openProfileUserId === currentUserId}
         >
-      {openProfileUserId ? (
+        {openProfileUserId ? (
         openProfileUserId === currentUserId ? (
-          <MyProfilePage onBack={closeProfile} />
+          isNotesHistoryOpen ? (
+            <NotesHistoryPage onBack={() => setIsNotesHistoryOpen(false)} />
+          ) : (
+            <MyProfilePage onBack={closeProfile} onOpenNotesHistory={() => setIsNotesHistoryOpen(true)} />
+          )
         ) : (
           <OtherUserProfilePage userId={openProfileUserId} onBack={closeProfile} onOpenChat={handleOpenChat} />
         )
@@ -68,9 +75,7 @@ function App() {
             />
           )}
           {activeView === "contacts" && <ContactsPage onOpenChat={handleOpenChat} />}
-          {activeView === "settings" && (
-            <div className="p-6 text-muted-foreground">Page Settings (prochain module)</div>
-          )}
+          {activeView === "settings" && <SettingsPage />}
         </div>
       )}
     </AppLayout>

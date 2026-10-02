@@ -8,6 +8,7 @@ import { ConversationListItem } from "./ConversationListItem";
 import { getConversationDisplayInfo } from "@/lib/conversation-utils";
 import { useAuthStore } from "@/store/auth.store";
 import type { Conversation } from "@/types/models";
+import { NotesBar } from "./NotesBar";
 
 interface ConversationListProps {
   conversations: Conversation[];
@@ -32,8 +33,10 @@ export function ConversationList({ conversations, selectedId, onSelect, onCreate
     });
   }, [conversations, search, filter, currentUserId]);
 
-  return (
+   return (
     <div className="flex h-full min-h-0 w-80 shrink-0 flex-col border-r border-border">
+      <NotesBar />
+
       <div className="space-y-3 p-4">
         <div className="flex items-center gap-2">
           <div className="relative flex-1">

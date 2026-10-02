@@ -15,10 +15,11 @@ export function formatDateSeparator(dateStr: string): string {
   if (isSameDay(date, now)) return "Aujourd'hui";
   if (isSameDay(date, yesterday)) return "Hier";
 
-  const diffDays = Math.floor((now.getTime() - date.getTime()) / (1000 * 60 * 60 * 24));
-  if (diffDays < 7) {
-    return date.toLocaleDateString("fr-FR", { weekday: "long" });
-  }
+  const sameYear = date.getFullYear() === now.getFullYear();
 
-  return date.toLocaleDateString("fr-FR", { day: "numeric", month: "long", year: diffDays > 365 ? "numeric" : undefined });
+  return date.toLocaleDateString("fr-FR", {
+    day: "2-digit",
+    month: "2-digit",
+    year: sameYear ? undefined : "numeric",
+  });
 }
