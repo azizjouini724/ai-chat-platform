@@ -192,7 +192,7 @@ export class ConversationsService {
 
     return conversation;
   }
-  async addMember(conversationId: string, adminId: string, newMemberId: string) {
+    async addMember(conversationId: string, adminId: string, newMemberId: string) {
     const conversation = await this.prisma.conversation.findUnique({
       where: { id: conversationId },
     });
@@ -219,6 +219,11 @@ export class ConversationsService {
       throw new NotFoundException('Utilisateur introuvable');
     }
 
+    const admin = await this.prisma.user.findUnique({
+      where: { id: adminId },
+      select: { username: true },
+    });
+
     const newMember = await this.prisma.conversationMember.create({
       data: { conversationId, userId: newMemberId, role: 'MEMBER' },
       include: { user: { select: publicUserSelect } },
@@ -232,6 +237,20 @@ export class ConversationsService {
     this.websocketGateway.server
       .in(newMemberId)
       .socketsJoin(`conversation:${conversationId}`);
+
+    // Crée un message système persistant, visible par tous (même hors ligne, même après reload)
+    const systemMessage = await this.prisma.message.create({
+      data: {
+        conversationId,
+        senderId: adminId,
+        type: 'SYSTEM',
+        content: `${admin?.username ?? 'Un admin'} a ajouté ${newMember.user.username} au groupe`,
+      },
+      include: { sender: { select: publicUserSelect } },
+    });
+    this.websocketGateway.server
+      .to(`conversation:${conversationId}`)
+      .emit('newMessage', systemMessage);
 
     return newMember;
   }
@@ -342,7 +361,7 @@ export class ConversationsService {
       include: { user: { select: publicUserSelect } },
     });
   }
-  // Un membre (non-admin) propose d'ajouter quelqu'un
+    // Un membre (non-admin) propose d'ajouter quelqu'un
   async proposeMember(conversationId: string, requesterId: string, proposedUserId: string) {
     const conversation = await this.prisma.conversation.findUnique({
       where: { id: conversationId },
@@ -379,20 +398,40 @@ export class ConversationsService {
       throw new BadRequestException('Une demande est déjà en attente pour cette personne');
     }
 
+    const admins = await this.prisma.conversationMember.findMany({
+      where: { conversationId, role: 'ADMIN' },
+      select: { userId: true },
+    });
+
     if (existing) {
-      return this.prisma.groupJoinRequest.update({
+      const request = await this.prisma.groupJoinRequest.update({
         where: { id: existing.id },
         data: { status: 'PENDING', requestedById: requesterId },
+        include: { user: { select: publicUserSelect }, requestedBy: { select: publicUserSelect } },
       });
+
+      admins.forEach((admin) => {
+        this.websocketGateway.server.to(admin.userId).emit('newGroupJoinRequest', request);
+      });
+
+      return request;
     }
 
-    return this.prisma.groupJoinRequest.create({
+    const request = await this.prisma.groupJoinRequest.create({
       data: { conversationId, userId: proposedUserId, requestedById: requesterId, status: 'PENDING' },
       include: { user: { select: publicUserSelect }, requestedBy: { select: publicUserSelect } },
     });
+
+    admins.forEach((admin) => {
+      this.websocketGateway.server.to(admin.userId).emit('newGroupJoinRequest', request);
+    });
+
+    return request;
   }
 
-  // L'admin accepte une proposition
+  
+ 
+       // L'admin accepte une proposition
   async acceptJoinRequest(conversationId: string, adminId: string, requestId: string) {
     const isAdmin = await this.isAdmin(conversationId, adminId);
     if (!isAdmin) {
@@ -414,6 +453,11 @@ export class ConversationsService {
       data: { status: 'ACCEPTED' },
     });
 
+    const admin = await this.prisma.user.findUnique({
+      where: { id: adminId },
+      select: { username: true },
+    });
+
     const newMember = await this.prisma.conversationMember.create({
       data: { conversationId, userId: request.userId, role: 'MEMBER' },
       include: { user: { select: publicUserSelect } },
@@ -427,9 +471,21 @@ export class ConversationsService {
       .in(request.userId)
       .socketsJoin(`conversation:${conversationId}`);
 
+    const systemMessage = await this.prisma.message.create({
+      data: {
+        conversationId,
+        senderId: adminId,
+        type: 'SYSTEM',
+        content: `${admin?.username ?? 'Un admin'} a ajouté ${newMember.user.username} au groupe`,
+      },
+      include: { sender: { select: publicUserSelect } },
+    });
+    this.websocketGateway.server
+      .to(`conversation:${conversationId}`)
+      .emit('newMessage', systemMessage);
+
     return newMember;
   }
-
   // L'admin refuse une proposition
   async declineJoinRequest(conversationId: string, adminId: string, requestId: string) {
     const isAdmin = await this.isAdmin(conversationId, adminId);

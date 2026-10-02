@@ -82,6 +82,8 @@ export interface GroupJoinRequest {
   conversationId: string;
   userId: string;
   user?: User;
+  requestedById: string;
+  requestedBy?: User;
   status: JoinRequestStatus;
   createdAt: string;
 }
@@ -100,6 +102,20 @@ export interface PostLike {
   postId: string;
   userId: string;
   user?: User;
+}
+export interface Note {
+  id: string;
+  authorId: string;
+  content: string;
+  emoji?: string | null;
+  imageUrl?: string | null;
+  createdAt: string;
+  expiresAt: string;
+  author: {
+    id: string;
+    username: string;
+    avatarUrl?: string | null;
+  };
 }
 
 export interface PostComment {

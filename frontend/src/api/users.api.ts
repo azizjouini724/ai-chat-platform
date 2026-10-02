@@ -14,4 +14,6 @@ export const usersApi = {
   deleteMe: () => api.delete("/users/me"),
   search: (query: string) => api.get<User[]>(`/users/search?q=${encodeURIComponent(query)}`),
   getById: (id: string) => api.get<User>(`/users/${id}`),
+  changePassword: (data: { currentPassword: string; newPassword: string }) =>
+    api.patch("/users/me/password", data),
 };

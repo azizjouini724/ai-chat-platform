@@ -1,5 +1,6 @@
 [README.md.pdf](https://github.com/user-attachments/files/29891105/README.md.pdf)
 
+
 ```
 chat_app
 ├─ backend
@@ -45,6 +46,10 @@ chat_app
 │  │  │  ├─ 20260916202418_add_message_reply
 │  │  │  │  └─ migration.sql
 │  │  │  ├─ 20260921200509_add_posts_and_status
+│  │  │  │  └─ migration.sql
+│  │  │  ├─ 20260926184353_add_notes
+│  │  │  │  └─ migration.sql
+│  │  │  ├─ 20260927113836_add_note_image
 │  │  │  │  └─ migration.sql
 │  │  │  └─ migration_lock.toml
 │  │  └─ schema.prisma
@@ -106,6 +111,10 @@ chat_app
 │  │  │  ├─ messages.module.ts
 │  │  │  ├─ messages.service.spec.ts
 │  │  │  └─ messages.service.ts
+│  │  ├─ notes
+│  │  │  ├─ notes.controller.ts
+│  │  │  ├─ notes.module.ts
+│  │  │  └─ notes.service.ts
 │  │  ├─ posts
 │  │  │  ├─ posts.controller.spec.ts
 │  │  │  ├─ posts.controller.ts
@@ -118,6 +127,7 @@ chat_app
 │  │  │  └─ prisma.service.ts
 │  │  ├─ users
 │  │  │  ├─ dto
+│  │  │  │  ├─ change-password.dto.ts
 │  │  │  │  └─ update-user.dto.ts
 │  │  │  ├─ users.controller.spec.ts
 │  │  │  ├─ users.controller.ts
@@ -153,12 +163,14 @@ chat_app
 │  │  │  ├─ conversations.api.ts
 │  │  │  ├─ friends.api.ts
 │  │  │  ├─ messages.api.ts
+│  │  │  ├─ notes.api.ts
 │  │  │  ├─ posts.api.ts
 │  │  │  └─ users.api.ts
 │  │  ├─ App.css
 │  │  ├─ App.tsx
 │  │  ├─ assets
-│  │  │  └─ logo.png
+│  │  │  ├─ logo.png
+│  │  │  └─ logo_dark.png
 │  │  ├─ components
 │  │  │  ├─ ErrorBoundary.tsx
 │  │  │  ├─ layout
@@ -234,17 +246,20 @@ chat_app
 │  │  │  │  │  ├─ MessageBubble.tsx
 │  │  │  │  │  ├─ MessageInput.tsx
 │  │  │  │  │  ├─ MessageReactions.tsx
+│  │  │  │  │  ├─ NotesBar.tsx
 │  │  │  │  │  ├─ QuotedMessage.tsx
 │  │  │  │  │  ├─ ReactionPicker.tsx
 │  │  │  │  │  └─ ReplyPreview.tsx
 │  │  │  │  └─ MessagesPage.tsx
-│  │  │  └─ profile
-│  │  │     ├─ components
-│  │  │     │  ├─ CreatePostForm.tsx
-│  │  │     │  ├─ PostCard.tsx
-│  │  │     │  └─ PostComments.tsx
-│  │  │     ├─ MyProfilePage.tsx
-│  │  │     └─ OtherUserProfilePage.tsx
+│  │  │  ├─ profile
+│  │  │  │  ├─ components
+│  │  │  │  │  ├─ CreatePostForm.tsx
+│  │  │  │  │  ├─ PostCard.tsx
+│  │  │  │  │  └─ PostComments.tsx
+│  │  │  │  ├─ MyProfilePage.tsx
+│  │  │  │  └─ OtherUserProfilePage.tsx
+│  │  │  └─ settings
+│  │  │     └─ SettingsPage.tsx
 │  │  ├─ sockets
 │  │  │  └─ socket.ts
 │  │  ├─ store

@@ -14,9 +14,10 @@ import type { Post, PostComment } from "@/types/models";
 
 interface MyProfilePageProps {
   onBack: () => void;
+  onOpenNotesHistory: () => void;
 }
 
-export function MyProfilePage({ onBack }: MyProfilePageProps) {
+export function MyProfilePage({ onBack, onOpenNotesHistory }: MyProfilePageProps) {
   const user = useAuthStore((s) => s.user);
   const setUser = useAuthStore((s) => s.setUser);
   const [isUploadingAvatar, setIsUploadingAvatar] = useState(false);
@@ -224,6 +225,12 @@ export function MyProfilePage({ onBack }: MyProfilePageProps) {
           )}
         </div>
       </div>
+       <button
+        onClick={onOpenNotesHistory}
+        className="mx-auto mt-4 block text-sm text-primary hover:underline"
+      >
+        Voir mes notes
+      </button>
 
       <div className="mt-8 rounded-2xl border border-border bg-card p-5">
         <div className="flex items-center justify-between">

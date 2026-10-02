@@ -17,6 +17,7 @@ import { FileInterceptor } from '@nestjs/platform-express';
 import { UsersService } from './users.service';
 import { UpdateUserDto } from './dto/update-user.dto';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
+import { ChangePasswordDto } from './dto/change-password.dto';
 
 @UseGuards(JwtAuthGuard)
 @Controller('users')
@@ -71,5 +72,9 @@ export class UsersController {
   @Get(':id')
   getUserById(@Param('id') id: string) {
     return this.usersService.getUserById(id);
+  }
+    @Patch('me/password')
+  changePassword(@Request() req: any, @Body() dto: ChangePasswordDto) {
+    return this.usersService.changePassword(req.user.userId, dto.currentPassword, dto.newPassword);
   }
 }

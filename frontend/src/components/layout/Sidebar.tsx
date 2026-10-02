@@ -1,6 +1,8 @@
 import { MessageSquare, Users, Sparkles, Settings, Lock, Cloud, UserRound } from "lucide-react";
 import { cn } from "@/lib/utils";
 import logo from "@/assets/logo.png";
+import { useTheme } from "next-themes";
+import logoDark from "@/assets/logo_dark.png";
 
 export type ActiveView = "messages" | "contacts" | "ai-tools" | "settings";
 
@@ -19,10 +21,13 @@ const navItems: { id: ActiveView; label: string; icon: typeof MessageSquare; loc
 ];
 
 export function Sidebar({ active, onChange, onProfileClick, isProfileActive }: SidebarProps) {
+  const { resolvedTheme } = useTheme();
+  const activeLogo = resolvedTheme === "dark" ? logoDark : logo;
+
   return (
     <aside className="flex h-screen w-64 flex-col border-r border-sidebar-border bg-sidebar px-4 py-5">
       <div className="mb-8 flex items-center gap-2 px-2">
-        <img src={logo} alt="Chatini" className="h-11 w-11" />
+          <img src={activeLogo} alt="Chatini" className="h-11 w-11" />
         <span className="font-heading text-xl font-bold text-sidebar-foreground">Chatini</span>
       </div>
 

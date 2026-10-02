@@ -11,6 +11,7 @@ import { ConversationsModule } from './conversations/conversations.module';
 import { MessagesModule } from './messages/messages.module';
 import { WebsocketModule } from './websocket/websocket.module';
 import { PostsModule } from './posts/posts.module';
+import { NotesModule } from './notes/notes.module';
 
 @Module({
   imports: [
@@ -29,6 +30,7 @@ import { PostsModule } from './posts/posts.module';
     MessagesModule,
     WebsocketModule,
     PostsModule,
+    NotesModule
   ],
   controllers: [AppController],
   providers: [

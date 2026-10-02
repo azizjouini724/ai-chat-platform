@@ -13,6 +13,7 @@ import type { User } from "@/types/models";
 import { ConversationListSkeleton } from "./components/ConversationListSkeleton";
 
 
+
 interface MessagesPageProps {
   selectedConversationId: string | null;
   onSelectConversation: (id: string) => void;
@@ -66,7 +67,7 @@ function handleGroupLeft() {
   }
 
   return (
-    <div className="flex h-full min-h-0">
+        <div className="flex h-full min-h-0">
       <ConversationList
         conversations={conversations}
         selectedId={selectedConversationId}

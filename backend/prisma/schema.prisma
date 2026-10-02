@@ -42,6 +42,7 @@ model User {
   posts        Post[]
   postLikes    PostLike[]
   postComments PostComment[]
+  notes Note[]
 }
 enum FriendshipStatus {
   PENDING
@@ -194,6 +195,17 @@ model Post {
   author   User          @relation(fields: [authorId], references: [id], onDelete: Cascade)
   likes    PostLike[]
   comments PostComment[]
+}
+model Note {
+  id        String   @id @default(uuid())
+  authorId  String
+  content   String
+  emoji     String?
+  imageUrl  String?
+  createdAt DateTime @default(now())
+  expiresAt DateTime
+
+  author User @relation(fields: [authorId], references: [id], onDelete: Cascade)
 }
 
 model PostLike {

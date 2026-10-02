@@ -18,7 +18,12 @@ export class CloudinaryService {
   ): Promise<UploadApiResponse> {
     return new Promise((resolve, reject) => {
       const uploadStream = cloudinary.uploader.upload_stream(
-        { folder, resource_type: 'image' },
+        {
+          folder,
+          resource_type: 'image',
+          quality: 'auto:best',
+          fetch_format: 'auto',
+        },
         (error, result) => {
           if (error) return reject(error);
           if (!result) return reject(new Error('Upload failed'));
@@ -47,9 +52,11 @@ export class CloudinaryService {
       streamifier.createReadStream(file.buffer).pipe(uploadStream);
     });
   }
+
   async deleteImage(publicId: string): Promise<void> {
     await cloudinary.uploader.destroy(publicId);
   }
+
   extractPublicId(url: string): string | null {
     const matches = url.match(/\/upload\/(?:v\d+\/)?(.+)\.\w+$/);
     return matches ? matches[1] : null;
